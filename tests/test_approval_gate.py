@@ -45,12 +45,16 @@ class ApprovalGateTests(unittest.TestCase):
         self.assertNotIn("gh workflow run", SCHEDULE)
         self.assertNotIn("gh pr create", SCHEDULE)
 
-    def test_local_secret_not_in_repository(self):
-        self.assertIn("ConvertFrom-SecureString", SETUP)
-        self.assertIn("ConvertTo-SecureString", RUN)
-        self.assertIn("ZeroFreeBSTR", RUN)
+    def test_credentials_remain_managed_by_local_hermes(self):
+        self.assertIn("hermes model", SETUP)
+        self.assertIn('"hermes", "chat"', AGENT)
         self.assertIn(".local/", (ROOT / ".gitignore").read_text(encoding="utf-8"))
-        self.assertNotIn("OPENAI_API_KEY", AGENT)
+        self.assertNotIn("opencode", RUN.lower())
+        self.assertNotIn("OPENAI_API_KEY = ", AGENT)
+        self.assertNotIn("gh workflow run", AGENT)
+        self.assertIn('toolset = "file" if role == "build" else "todo"', AGENT)
+        self.assertNotIn("enable-schedule.ps1", SETUP)
+
 
 
 if __name__ == "__main__":
