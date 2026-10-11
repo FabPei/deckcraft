@@ -30,6 +30,9 @@ jobs:
         with:
           persist-credentials: false
 
+      - name: Validate controller scripts (no model or Rust minutes)
+        run: python3 -m unittest discover -s tests -v
+
       - name: Preflight (never spend API tokens without setup)
         id: preflight
         env:
