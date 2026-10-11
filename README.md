@@ -1,77 +1,70 @@
-# DeckCraft — lokale Coding-AI-Automatisierung
+# DeckCraft – lokale autonome Beiträge mit Hermes Agent
 
-**Controller:** [FabPei/deckcraft](https://github.com/FabPei/deckcraft)
-**Öffentlicher Fork:** [FabPei/deckcraft-contrib](https://github.com/FabPei/deckcraft-contrib)
-**Originalprojekt:** [storytold/deckcraft](https://github.com/storytold/deckcraft)
+**Controller:** https://github.com/FabPei/deckcraft  
+**Fork:** https://github.com/FabPei/deckcraft-contrib  
+**Original:** https://github.com/storytold/deckcraft
 
-Der Agent arbeitet **auf deinem Windows-PC**, nicht in GitHub Actions. Er wählt ein offenes Issue aus, implementiert mit **OpenCode + Xiaomi MiMo**, testet die Rust-Änderungen lokal, lässt einen unabhängigen read-only Reviewer prüfen und pusht einen geprüften Branch in deinen Fork. Du entscheidest danach, ob ein **externer Pull Request** an das Originalprojekt erstellt werden darf.
+Dieses Repository steuert lokale Coding-AIs auf deinem Windows-PC. Es nutzt die **bereits installierte Nous Research Hermes Agent CLI**, nicht OpenCode und nicht GitHub Actions. Der Controller wählt Issues aus, implementiert kleinere Rust-Fixes, prüft sie, und legt einen Branch in deinem Fork sowie ein Freigabe-Issue an. **Ein externer Pull Request wird nur nach deiner interaktiven Zustimmung angelegt.**
 
-## Einrichtung auf deinem Windows-PC
+## Einmalig einrichten
 
-Benötigt: **Git**, **GitHub CLI** (gh), **Python 3.10+**, **Node.js/npm** und **Rust/rustup**. Installiere die offiziellen Programme über deren Installer bzw. winget. OpenCode wird bei Bedarf vom Setup über npm installiert. In PowerShell:
+Benötigt: Git, GitHub CLI, Python 3.10+, Rust/rustup und Hermes CLI (Befehl: hermes). Keine OpenCode- oder npm-Installation nötig.
+
+PowerShell:
 
     git clone https://github.com/FabPei/deckcraft.git
     cd deckcraft
     gh auth login
-    rustup component add rustfmt clippy
-    rustup target add wasm32-unknown-unknown
+
+Hermes verwendet die von dir bereits konfigurierte Modell- und API-Anmeldung. Falls Xiaomi MiMo noch nicht eingerichtet ist, starte \`hermes model\`, wähle Xiaomi (Provider \`xiaomi\`) und hinterlege deinen Key in Hermes (unterstützt die Umgebungsvariable \`XIAOMI_API_KEY\`). Den Key **nicht** im Repository speichern. Du kannst alternativ bewusst deinen bereits gewählten Hermes-Provider nutzen. Optionale Umgebungsvariablen für einen spezifischen Lauf: \`HERMES_PROVIDER\` und \`HERMES_MODEL\`.
+
     powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\setup-local.ps1
 
-Das Setup fragt **einmal lokal** nach deinem MiMo-API-Key und verschlüsselt ihn mit **Windows DPAPI für deinen Windows-Benutzer** in der ignorierten Datei .local/secrets/mimo.dpapi. Du brauchst keinen OpenAI-Key. Der GitHub-Actions-Secret-Wert kann aus Sicherheitsgründen **nicht automatisch auf deinen PC übertragen werden**: den MiMo-Key deshalb lokal erneut eingeben.
+Dieses Setup prüft Programme, Rust-Targets, GitHub-Zugang und die Repo-Tests. **Es startet weder einen Coding-Lauf noch den Scheduler.**
 
-- Normaler MiMo-API-Key (sk-...): Enter für https://api.xiaomimimo.com/v1.
-- MiMo Token Plan (tp-... / ttp-...): den korrekten OpenAI-kompatiblen Endpoint deines Plans angeben. Siehe [Xiaomi-MiMo-Anleitung](https://mimo.mi.com/docs/tokenplan/integration/opencode).
-- Auf GitHub ist **kein CONTRIBUTION_TOKEN** mehr erforderlich. Lokal verwendet Git die von dir eingerichtete GitHub-CLI-Anmeldung. Das zuvor erstellte GitHub-PAT kann nach der Umstellung widerrufen werden; den alten Actions-Secret-Eintrag kannst du löschen.
+## Agenten benutzen
 
-Die Einrichtung aktiviert den **Windows Task Scheduler** für Montag/Mittwoch/Freitag **19:00 Uhr deiner Windows-Ortszeit**, nur während du angemeldet bist (ausgefallene Starts werden bei der nächsten Möglichkeit nachgeholt). Dein PC muss dafür laufen. Es wird höchstens **ein Issue pro Durchlauf** bearbeitet.
+Ein geeignetes Issue automatisch auswählen:
 
-## Benutzung
+    .\scripts\run-local.ps1
 
-- **Jetzt einen automatischen Durchlauf ausführen:**
-  
-      .\scripts\run-local.ps1
+Ein Issue gezielt auswählen (nur falls nicht anderweitig belegt):
 
-- **Ein konkretes Issue bearbeiten** (sofern noch ohne aktiven PR und geeignet):
+    .\scripts\run-local.ps1 -Issue 69
 
-      .\scripts\run-local.ps1 -Issue 69
+Lokalen Zeitplan explizit aktivieren (Windows Task Scheduler; Montag, Mittwoch, Freitag 19 Uhr):
 
-- **Geprüfte Ergebnisse ansehen:** [Freigabe-Issues](https://github.com/FabPei/deckcraft/issues) und Branches auf [FabPei/deckcraft-contrib](https://github.com/FabPei/deckcraft-contrib/branches). Die vollständigen Logs bleiben lokal unter .local/logs/.
+    .\scripts\enable-schedule.ps1
 
-- **Erst nach Prüfung den externen PR erstellen** (Beispiel für Issue 69):
+Zeitplan wieder abschalten:
 
-      .\scripts\approve-pr.ps1 -Issue 69
+    .\scripts\disable-schedule.ps1
 
-  Der Publish-Befehl prüft, dass der Fork-Branch genau dem erfolgreich getesteten Commit entspricht. Danach verlangt er im lokalen Terminal die wörtliche Eingabe PUBLISH #69. **Kein Scheduler, Coding-Agent oder automatischer Task kann diesen Schritt ausführen.**
+Scheduler läuft nur mit angemeldetem Windows-Benutzer. PC muss eingeschaltet sein. Ein Agentenlauf bearbeitet höchstens einen Kandidaten.
 
-- **Automatisierung anhalten:**
+## Deine ausschließliche PR-Freigabe
 
-      .\scripts\disable-schedule.ps1
+Ein erfolgreiches Ergebnis erzeugt den Fork-Branch \`agent/issue-N\` sowie ein GitHub-Issue mit dem Titel \`PR approval: upstream #N\` im Controller. Dort prüfst du den Code, die Tests und den Commit.
 
-- **Automatisierung wieder aktivieren:**
+Nur danach **manuell im lokalen Terminal**:
 
-      .\scripts\enable-schedule.ps1
+    .\scripts\approve-pr.ps1 -Issue 69
 
-## Architektur
+Der Publisher prüft, dass der Branch exakt dem getesteten Commit entspricht, und verlangt die wörtliche Eingabe \`PUBLISH #69\`. Der Coding-Agent, Reviewer und Task Scheduler können **keine externen PRs eröffnen**.
 
-- scripts/local_agent.py: deterministischer lokaler Orchestrator, einmaliger Lock, Issue-Scout, Code-Agent, Rust-Tests, Reparaturversuch, unabhängiger Reviewer, kontrollierter Push in den Fork und manuelles Publish.
-- scripts/select_issue.py: öffentliche Upstream-Issues und PRs analysieren, Doppelarbeit vermeiden und reproduzierbare Bugs priorisieren.
-- config/opencode-mimo.json: MiMo-V2.6 Flash (Standard) oder Pro; Eingaben über Umgebungsvariablen; keine Keys im Repo. Für einen anderen Modellmodus kann der Wert model in .local/settings.json geändert werden.
-- scripts/validate_review.py: verweigert Veröffentlichung bei fehlendem oder nicht exakt bestandenem Review.
-- .local/source: persistent lokaler Fork-Klon mit Git-Upstream-Remote.
-- .local/worktrees/issue-N: isolierter Arbeitsbereich pro Issue. Gemeinsamer Cargo-Cache unter .local/cargo-target, Fonts und gemeinsame Regeln werden lokal wiederverwendet.
-- .local/approvals/N.json: exakter SHA des bestandenen lokalen CI-Laufs; nur für den manuellen Publish-Befehl.
-- tests/: Controller-Tests, vollständig lokal ausführbar:
+## Technischer Ablauf
 
-      python -m unittest discover -s tests -v
+- Issue-Scout (\`scripts/select_issue.py\`) vermeidet bestehende PRs, Agent-Branches und Blocker.
+- Rust-Code entsteht in eigenen Git-Worktrees unter \`.local/worktrees/\` mit gemeinsamem Cargo-Cache.
+- Coding: \`hermes chat --oneshot --toolsets file --format stream-json\`. Die AI erhält Dateiwerkzeuge, aber **keine Shell-, Web-, GitHub- oder Delegationswerkzeuge**.
+- Qualität: \`cargo xtask ci\`; bei Fehlschlag ein automatischer Reparaturversuch und erneute Prüfung.
+- Reviewer: separater Hermes-Lauf mit \`--toolsets todo\`; der Patch wird im Prompt bereitgestellt, sodass **keine Lese-/Schreib-/Terminal-Dateiwerkzeuge** nötig sind.
+- Review-Gate: \`scripts/validate_review.py\` verlangt einen erfolgreichen Hermes-\`result\`-Datensatz mit genau \`PASS\`.
+- Es werden keine GitHub-Actions-Workflows für Coding, Tests oder PR-Publishing verwendet.
+- Codes, Logs, Worktrees und lokale Entscheidungen bleiben unter \`.local/\` und werden nicht committed.
 
-Die GitHub-Actions-Dateien für Coding, QA und PR-Publishing wurden **entfernt**, damit keine Coding-Agents, Rust-Builds oder Modellkosten auf GitHub-Runnern entstehen.
+Referenzen: [Hermes CLI](https://hermes-agent.nousresearch.com/docs/reference/cli-commands) und [Hermes Toolsets](https://hermes-agent.nousresearch.com/docs/reference/toolsets-reference).
 
-## Kosten und Grenzen
+**Sicherheitsgrenze:** Hermes verwendet echte lokale Benutzerrechte. Eingeschränkte AI-Toolsets sind keine vollständige Betriebssystem-Sandbox. Für stärkeres Sicherheitsniveau einen eingeschränkten Windows-Benutzer oder eine VM verwenden. Der erste End-to-End-Test mit deiner konkreten Hermes/Rust-Installation ist noch ausstehend.
 
-- MiMo kostet gemäß deinem API-/Token-Plan. GitHub Actions benötigt keine bezahlten Build-Minuten für den lokalen Ablauf.
-- Erst ein tatsächlicher End-to-End-Durchlauf auf deinem Windows-PC kann bestätigen, dass alle Programme, Compiler, API-Zugänge und Prüfungen funktionieren. Die Implementierung allein beweist dies nicht.
-- Die Coding-AI erhält Datei-Lese-/Editierwerkzeuge, aber keine Shell-, Netzwerk- oder PR-Publish-Tools. Dies ist eine Zugriffsbeschränkung im Coding-Tool, **keine vollständige Betriebssystem-Sandbox**: OpenCode und der Runner sind lokale Programme mit deinen Benutzerrechten. Für stärkere Isolation sollte ein separater Windows-Benutzer oder eine VM eingesetzt werden.
-- Ein Modellfehler, fehlschlagende Tests, überschrittene Patch-Grenzen oder ein konkurrierender PR führt zum Abbruch. Kein ungeprüfter externer PR wird erstellt.
-- Bestehende GitHub PRs werden nicht automatisch gemergt; die Maintainer entscheiden.
-
-**Eine PR entsteht ausschließlich nach deiner lokalen, interaktiven Bestätigung.**
+Die ehemals eingerichteten GitHub-Actions-Secrets für MiMo und den GitHub-PAT sind überflüssig: Hermes nutzt seine bestehende lokale Anmeldung, GitHub lokal \`gh auth login\`. Nicht mehr benötigte GitHub-Actions-Secrets löschen und den alten PAT widerrufen, sofern er anderweitig nicht gebraucht wird.
