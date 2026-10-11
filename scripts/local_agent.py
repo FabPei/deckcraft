@@ -24,7 +24,7 @@ LOCK = STATE / "agent.lock"
 FORK = "FabPei/deckcraft-contrib"
 UPSTREAM = "storytold/deckcraft"
 CONTROLLER = "FabPei/deckcraft"
-BLOCKED = ("AGENTS.md", "CLAUDE.md", ".github/", ".opencode/", ".env",
+BLOCKED = ("AGENTS.md", "CLAUDE.md", ".github/", ".hermes/", ".opencode/", ".env",
            "assets/", "docs/brand/", "ATTRIBUTION.md", "NOTICE", "LICENSE",
            ".agent-", ".cargo/config.toml")
 
@@ -135,7 +135,9 @@ def call_ai(worktree, role, prompt, log, timeout):
 
 def cargo_ci(worktree, log):
     env = os.environ.copy()
-    env.pop("MIMO_API_KEY", None)
+    for name in ("MIMO_API_KEY", "XIAOMI_API_KEY", "OPENAI_API_KEY",
+                 "GH_TOKEN", "GITHUB_TOKEN", "CONTRIBUTION_TOKEN"):
+        env.pop(name, None)
     env["CRAFT_FONTS_DIR"] = str(FONTS)
     env["CARGO_TARGET_DIR"] = str(STATE / "cargo-target")
     (STATE / "cargo-target").mkdir(parents=True, exist_ok=True)
