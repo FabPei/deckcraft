@@ -1,45 +1,59 @@
 #!/usr/bin/env python3
-"""Fail-closed read-only OpenCode review result checker.
+"""Fail-closed parser for Hermes Agent's --format stream-json event stream.
 
-OpenCode emits JSON lines. Never trust free-form logs or stdout regexes for PASS.
+Hermes emits a terminal {"type":"result","exit_code":0,"text":"..."} event.
+Any missing/ambiguous result or nonzero exit code fails.
 """
 import json
 import pathlib
 import sys
 
 
-def check_review(path: pathlib.Path) -> tuple[bool, str]:
-    parts = []
-    failed = False
+def final_result(path: pathlib.Path) -> tuple[bool, str]:
+    completed = []
     try:
         with path.open(encoding="utf-8") as stream:
             for line in stream:
-                line = line.strip()
-                if not line:
+                if not line.strip():
                     continue
-                entry = json.loads(line)
-                event_type = entry.get("type")
-                if event_type == "error":
-                    failed = True
-                elif event_type == "text":
-                    text = entry.get("part", {}).get("text")
-                    if isinstance(text, str) and text.strip():
-                        parts.append(text.strip())
+                event = json.loads(line)
+                if not isinstance(event, dict):
+                    return False, "Non-object Hermes JSONL event"
+                if event.get("type") == "result":
+                    completed.append(event)
     except (OSError, ValueError, TypeError) as error:
-        return False, f"Invalid or missing OpenCode JSON output: {type(error).__name__}"
-    if failed or not parts:
-        return False, "Reviewer returned an error or did not produce a final text verdict"
-    if parts[-1] != "PASS":
-        return False, f"Reviewer did not provide exact PASS (received {parts[-1][:300]!r})"
-    return True, "Independent review: PASS"
+        return False, f"Invalid or missing Hermes JSON stream: {type(error).__name__}"
+    if len(completed) != 1:
+        return False, f"Expected one terminal Hermes result; found {len(completed)}"
+    final = completed[0]
+    if final.get("exit_code") != 0 or final.get("error"):
+        return False, "Hermes run did not complete successfully"
+    text = final.get("text")
+    if not isinstance(text, str) or not text.strip():
+        return False, "Hermes run ended without a text result"
+    return True, text.strip()
+
+
+def check_run(path: pathlib.Path) -> tuple[bool, str]:
+    ok, result = final_result(path)
+    return (ok, "Hermes completed successfully" if ok else result)
+
+
+def check_review(path: pathlib.Path) -> tuple[bool, str]:
+    ok, text = final_result(path)
+    if not ok:
+        return False, text
+    if text != "PASS":
+        return False, f"Review did not return exact PASS: {text[:250]!r}"
+    return True, "Independent Hermes review: PASS"
 
 
 def main():
     if len(sys.argv) != 2:
-        sys.exit("Usage: validate_review.py <opencode.jsonl>")
-    passed, reason = check_review(pathlib.Path(sys.argv[1]))
-    print(reason)
-    sys.exit(0 if passed else 1)
+        sys.exit("Usage: validate_review.py <hermes-stream.jsonl>")
+    good, detail = check_review(pathlib.Path(sys.argv[1]))
+    print(detail)
+    sys.exit(0 if good else 1)
 
 
 if __name__ == "__main__":
