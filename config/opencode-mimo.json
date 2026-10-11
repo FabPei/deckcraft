@@ -47,6 +47,7 @@
     }
   },
   "permission": {
+    "*": "deny",
     "bash": "deny",
     "webfetch": "deny",
     "websearch": "deny",
