@@ -48,9 +48,12 @@ jobs:
             echo "No approved code branch exists for issue $ISSUE_NUMBER"; exit 1
           fi
           # The private approval issue must have been created by the successful coding workflow.
-          approvals=$(GH_TOKEN="$CONTROL_TOKEN" gh api "repos/$CONTROL_REPO/issues?state=open&per_page=100" --jq '.[].title')
-          if ! printf '%s\n' "$approvals" | grep -Fxq "PR approval: upstream #$ISSUE_NUMBER"; then
-            echo 'No open internal PR approval issue; refusing PR creation'; exit 1
+          expected_sha=$(GH_TOKEN="$CONTROL_TOKEN" gh api "repos/$CONTROL_REPO/issues?state=open&per_page=100" \
+            --jq '.[] | select(.title == "PR approval: upstream #'"$ISSUE_NUMBER"'") | .body' \
+            | sed -n 's/^Commit: \([0-9a-f]\{40\}\)$/\1/p' | head -1)
+          actual_sha=$(gh api "repos/$CONTRIBUTION_REPO/git/ref/heads/agent/issue-$ISSUE_NUMBER" --jq '.object.sha')
+          if [ -z "$expected_sha" ] || [ "$expected_sha" != "$actual_sha" ]; then
+            echo "No valid approval record for this exact commit SHA; refusing PR creation"; exit 1
           fi
           state=$(gh api "repos/storytold/deckcraft/issues/$ISSUE_NUMBER" --jq '.state')
           if [ "$state" != 'open' ]; then
