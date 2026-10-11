@@ -30,8 +30,12 @@ class ApprovalGateTests(unittest.TestCase):
     def test_contribution_is_bounded(self):
         self.assertRegex(CODING, r"if \[ \"\$files\" -gt 20 \]")
         self.assertRegex(CODING, r"if: steps.ci_final.outputs.passed == 'true'")
-        self.assertIn("Independent read-only code review", CODING)
+        self.assertIn("Independent MiMo read-only code review", CODING)
         self.assertIn("Agent blocked: upstream #", CODING)
+        self.assertNotIn("openai/codex-action", CODING)
+        self.assertNotIn("OPENAI_API_KEY", CODING)
+        self.assertIn("secrets.MIMO_API_KEY", CODING)
+        self.assertIn("--require", CODING)
 
 
 if __name__ == "__main__":
