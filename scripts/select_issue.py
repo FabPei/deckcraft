@@ -111,6 +111,7 @@ def write_output(number, issue=None, reason=""):
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--issue", type=int, default=0, help="Prefer this issue on a manual run")
+    parser.add_argument("--require", action="store_true", help="Fail if the specified issue is no longer eligible")
     args = parser.parse_args()
 
     fork = os.environ.get("CONTRIBUTION_REPO", DEFAULT_FORK).strip()
@@ -144,6 +145,8 @@ def main():
         choices = [(s, i) for s, i in choices if i["number"] == args.issue]
     if not choices:
         write_output(None, reason="no eligible, unclaimed issue")
+        if args.require:
+            raise ValueError("Required issue is already claimed, closed, or has an upstream PR")
         return
     choices.sort(key=lambda entry: (-entry[0], entry[1]["number"]))
     _, issue = choices[0]
