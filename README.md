@@ -1,13 +1,13 @@
 # DeckCraft Contribution Automation
 
-Private control repository for automated contributions to [storytold/deckcraft](https://github.com/storytold/deckcraft). **This is not a copy/fork of DeckCraft's source code.**
+Public control repository for automated contributions to [storytold/deckcraft](https://github.com/storytold/deckcraft). **This is not a copy/fork of DeckCraft's source code.**
 
 ## Safety contract
 
 - The scout selects eligible upstream bugs with no existing upstream PR.
 - Codex edits a disposable checkout of upstream, obeys the upstream `AGENTS.md`, and runs validation.
 - Finished work is pushed to a separate **public, genuine GitHub fork** on an `agent/issue-N` branch.
-- An issue in **this** private repository contains the review/approval report.
+- An issue in **this** public controller repository contains the review/approval report.
 - **No upstream pull request is opened automatically.** Only a manually dispatched `Publish approved PR` workflow can create one.
 - No automated merging, no write access to upstream, no unconditional force push.
 - If tests fail, the candidate is not submitted.
@@ -25,7 +25,7 @@ Private control repository for automated contributions to [storytold/deckcraft](
 
 ## How it works
 
-`scripts/select_issue.py` pulls upstream issues, upstream PRs and existing branches in your contribution fork. It prioritizes user-facing reproducible bugs and avoids overlap with current PRs. The coding action uses the official `openai/codex-action` with workspace-only permissions. Cargo checks run independently of the model. After a single automatic repair attempt, a separate read-only Codex review checks the patch. Only when validation and review pass does a dedicated publishing step push code to the fork and create an **internal** approval issue.
+`scripts/select_issue.py` pulls upstream issues, upstream PRs and existing branches in your contribution fork. It prioritizes user-facing reproducible bugs and avoids overlap with current PRs. The coding action uses the official `openai/codex-action` with workspace-only permissions. Cargo checks run independently of the model. After a single automatic repair attempt, a separate read-only Codex review checks the patch. Only when validation and review pass does a dedicated publishing step push code to the fork and create an **controller** approval issue.
 
 The controller does not make promises of successful automation if secrets, a public fork, runner time or model access are unavailable. Check the GitHub Actions log.
 
