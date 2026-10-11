@@ -1,41 +1,77 @@
-# DeckCraft contribution automation
+# DeckCraft — lokale Coding-AI-Automatisierung
 
-This **public controller repository** automates contributions to the original [storytold/deckcraft](https://github.com/storytold/deckcraft). This repo is **not** the upstream source code. Changes are prepared in a fresh upstream checkout, published as branches to [FabPei/deckcraft-contrib](https://github.com/FabPei/deckcraft-contrib), and proposed upstream **only after manual approval**.
+**Controller:** [FabPei/deckcraft](https://github.com/FabPei/deckcraft)
+**Öffentlicher Fork:** [FabPei/deckcraft-contrib](https://github.com/FabPei/deckcraft-contrib)
+**Originalprojekt:** [storytold/deckcraft](https://github.com/storytold/deckcraft)
 
-## One-time setup
+Der Agent arbeitet **auf deinem Windows-PC**, nicht in GitHub Actions. Er wählt ein offenes Issue aus, implementiert mit **OpenCode + Xiaomi MiMo**, testet die Rust-Änderungen lokal, lässt einen unabhängigen read-only Reviewer prüfen und pusht einen geprüften Branch in deinen Fork. Du entscheidest danach, ob ein **externer Pull Request** an das Originalprojekt erstellt werden darf.
 
-1. ✅ Public, genuine fork: [FabPei/deckcraft-contrib](https://github.com/FabPei/deckcraft-contrib) (parent: `storytold/deckcraft`).
-2. Open [Settings → Secrets and variables → Actions](https://github.com/FabPei/deckcraft/settings/secrets/actions) and create:
-   - **`MIMO_API_KEY`** — your Xiaomi MiMo API key. No OpenAI/Codex API key is required.
-   - **`CONTRIBUTION_TOKEN`** — separate GitHub personal access token with permission to write branches in your public contribution fork and create pull requests to the original public upstream. Do not paste either key into GitHub issues, commit messages or chat.
-3. For a regular *pay-as-you-go* Xiaomi MiMo key (`sk-...`), the official OpenAI-compatible base URL is already the default: `https://api.xiaomimimo.com/v1`.
-   - For a **MiMo Token Plan** key (`tp-...`, `ttp-...`), add a GitHub **Actions variable** (not secret) `MIMO_BASE_URL` containing the **exact OpenAI-compatible base URL from your MiMo subscription dashboard**, e.g. a `https://token-plan-...xiaomimimo.com/v1` URL. The standard pay-as-you-go endpoint will **not** work with a Token Plan key.
-   - If using another MiMo API reseller, consult that provider's documented endpoint and model IDs first; this controller defaults to Xiaomi's official platform.
-4. Optional Actions variables:
-   - `MIMO_MODEL`: `mimo-v2.6-flash` (default) or `mimo-v2.6-pro`. Start with Flash for small, bounded fixes.
-   - `MIMO_REVIEW_MODEL`: reviewer model; defaults to `MIMO_MODEL`.
-   - `CONTRIBUTION_REPO`: defaults to `FabPei/deckcraft-contrib`.
-5. Start one run from [Actions → DeckCraft contribution agent → Run workflow](https://github.com/FabPei/deckcraft/actions/workflows/contribute.yml). The schedule runs Monday, Wednesday and Friday at 06:17 UTC after setup.
-6. Review the created **`PR approval: upstream #N`** issue in this repository, the actual fork branch, and its Rust quality-gate results.
-7. When you explicitly approve an upstream pull request, manually start [Publish approved DeckCraft PR](https://github.com/FabPei/deckcraft/actions/workflows/publish-approved.yml) and enter the issue number. The publisher verifies that the fork branch still matches the approved commit SHA.
+## Einrichtung auf deinem Windows-PC
 
-## Architecture and security
+Benötigt: **Git**, **GitHub CLI** (gh), **Python 3.10+**, **Node.js/npm** und **Rust/rustup**. Installiere die offiziellen Programme über deren Installer bzw. winget. OpenCode wird bei Bedarf vom Setup über npm installiert. In PowerShell:
 
-- `scripts/select_issue.py`: chooses one reproducible upstream bug that has no active upstream PR or existing agent branch. The issue text is treated as untrusted data.
-- `config/opencode-mimo.json`: MiMo provider using **OpenCode** (the official Xiaomi-documented integration). Configuration contains **environment variable placeholders only**, never an API key.
-- `.github/workflows/contribute.yml`: the scheduled agent. Installs `opencode-ai`, runs a restricted editing agent, deterministic `cargo xtask ci`, one bounded repair attempt, then a separate read-only MiMo reviewer. It can push a candidate branch to your fork and create an approval issue but **cannot create an upstream pull request**.
-- `scripts/validate_review.py`: rejects missing, malformed, errored or non-PASS review output from OpenCode.
-- `.github/workflows/publish-approved.yml`: the **only** PR creation path, triggered **manually**. It checks the exact previously approved SHA.
-- `tests/` and `controller-ci.yml`: offline correctness tests for the scout, reviewer parser, and PR approval security gates.
+    git clone https://github.com/FabPei/deckcraft.git
+    cd deckcraft
+    gh auth login
+    rustup component add rustfmt clippy
+    rustup target add wasm32-unknown-unknown
+    powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\setup-local.ps1
 
-The coding agent has read/edit access to the temporary working tree **without shell, network fetch, external-directory or task tools**. Only separate deterministic GitHub Actions steps can run Rust tests and push code, and API credentials are not provided to the test or push subprocesses that do not need them. Like any LLM-based agent, the system is not immune to malicious repository content or model mistakes; validate each candidate before authorizing a PR.
+Das Setup fragt **einmal lokal** nach deinem MiMo-API-Key und verschlüsselt ihn mit **Windows DPAPI für deinen Windows-Benutzer** in der ignorierten Datei .local/secrets/mimo.dpapi. Du brauchst keinen OpenAI-Key. Der GitHub-Actions-Secret-Wert kann aus Sicherheitsgründen **nicht automatisch auf deinen PC übertragen werden**: den MiMo-Key deshalb lokal erneut eingeben.
 
-## Costs and limitations
+- Normaler MiMo-API-Key (sk-...): Enter für https://api.xiaomimimo.com/v1.
+- MiMo Token Plan (tp-... / ttp-...): den korrekten OpenAI-kompatiblen Endpoint deines Plans angeben. Siehe [Xiaomi-MiMo-Anleitung](https://mimo.mi.com/docs/tokenplan/integration/opencode).
+- Auf GitHub ist **kein CONTRIBUTION_TOKEN** mehr erforderlich. Lokal verwendet Git die von dir eingerichtete GitHub-CLI-Anmeldung. Das zuvor erstellte GitHub-PAT kann nach der Umstellung widerrufen werden; den alten Actions-Secret-Eintrag kannst du löschen.
 
-- **No OpenAI API charges.** Xiaomi MiMo usage is charged against your API account or Token Plan, depending on your key. A ChatGPT subscription has no bearing on this.
-- One issue per run, one concurrent agent workflow, bounded model execution and at most one repair attempt. Rust CI may be slow, and a 55-minute GitHub Actions job limit applies.
-- GitHub-hosted Actions minutes may be billed according to your repository and GitHub plan.
-- After setup, the first end-to-end run must still be validated: until a candidate branch + internal approval issue exist, this is a configured pipeline, not a proven autonomous contribution system.
-- GitHub maintainers ultimately decide whether an upstream PR is merged.
+Die Einrichtung aktiviert den **Windows Task Scheduler** für Montag/Mittwoch/Freitag **19:00 Uhr deiner Windows-Ortszeit**, nur während du angemeldet bist (ausgefallene Starts werden bei der nächsten Möglichkeit nachgeholt). Dein PC muss dafür laufen. Es wird höchstens **ein Issue pro Durchlauf** bearbeitet.
 
-**No PR gets opened to `storytold/deckcraft` without your manual authorization.**
+## Benutzung
+
+- **Jetzt einen automatischen Durchlauf ausführen:**
+  
+      .\scripts\run-local.ps1
+
+- **Ein konkretes Issue bearbeiten** (sofern noch ohne aktiven PR und geeignet):
+
+      .\scripts\run-local.ps1 -Issue 69
+
+- **Geprüfte Ergebnisse ansehen:** [Freigabe-Issues](https://github.com/FabPei/deckcraft/issues) und Branches auf [FabPei/deckcraft-contrib](https://github.com/FabPei/deckcraft-contrib/branches). Die vollständigen Logs bleiben lokal unter .local/logs/.
+
+- **Erst nach Prüfung den externen PR erstellen** (Beispiel für Issue 69):
+
+      .\scripts\approve-pr.ps1 -Issue 69
+
+  Der Publish-Befehl prüft, dass der Fork-Branch genau dem erfolgreich getesteten Commit entspricht. Danach verlangt er im lokalen Terminal die wörtliche Eingabe PUBLISH #69. **Kein Scheduler, Coding-Agent oder automatischer Task kann diesen Schritt ausführen.**
+
+- **Automatisierung anhalten:**
+
+      .\scripts\disable-schedule.ps1
+
+- **Automatisierung wieder aktivieren:**
+
+      .\scripts\enable-schedule.ps1
+
+## Architektur
+
+- scripts/local_agent.py: deterministischer lokaler Orchestrator, einmaliger Lock, Issue-Scout, Code-Agent, Rust-Tests, Reparaturversuch, unabhängiger Reviewer, kontrollierter Push in den Fork und manuelles Publish.
+- scripts/select_issue.py: öffentliche Upstream-Issues und PRs analysieren, Doppelarbeit vermeiden und reproduzierbare Bugs priorisieren.
+- config/opencode-mimo.json: MiMo-V2.6 Flash (Standard) oder Pro; Eingaben über Umgebungsvariablen; keine Keys im Repo. Für einen anderen Modellmodus kann der Wert model in .local/settings.json geändert werden.
+- scripts/validate_review.py: verweigert Veröffentlichung bei fehlendem oder nicht exakt bestandenem Review.
+- .local/source: persistent lokaler Fork-Klon mit Git-Upstream-Remote.
+- .local/worktrees/issue-N: isolierter Arbeitsbereich pro Issue. Gemeinsamer Cargo-Cache unter .local/cargo-target, Fonts und gemeinsame Regeln werden lokal wiederverwendet.
+- .local/approvals/N.json: exakter SHA des bestandenen lokalen CI-Laufs; nur für den manuellen Publish-Befehl.
+- tests/: Controller-Tests, vollständig lokal ausführbar:
+
+      python -m unittest discover -s tests -v
+
+Die GitHub-Actions-Dateien für Coding, QA und PR-Publishing wurden **entfernt**, damit keine Coding-Agents, Rust-Builds oder Modellkosten auf GitHub-Runnern entstehen.
+
+## Kosten und Grenzen
+
+- MiMo kostet gemäß deinem API-/Token-Plan. GitHub Actions benötigt keine bezahlten Build-Minuten für den lokalen Ablauf.
+- Erst ein tatsächlicher End-to-End-Durchlauf auf deinem Windows-PC kann bestätigen, dass alle Programme, Compiler, API-Zugänge und Prüfungen funktionieren. Die Implementierung allein beweist dies nicht.
+- Die Coding-AI erhält Datei-Lese-/Editierwerkzeuge, aber keine Shell-, Netzwerk- oder PR-Publish-Tools. Dies ist eine Zugriffsbeschränkung im Coding-Tool, **keine vollständige Betriebssystem-Sandbox**: OpenCode und der Runner sind lokale Programme mit deinen Benutzerrechten. Für stärkere Isolation sollte ein separater Windows-Benutzer oder eine VM eingesetzt werden.
+- Ein Modellfehler, fehlschlagende Tests, überschrittene Patch-Grenzen oder ein konkurrierender PR führt zum Abbruch. Kein ungeprüfter externer PR wird erstellt.
+- Bestehende GitHub PRs werden nicht automatisch gemergt; die Maintainer entscheiden.
+
+**Eine PR entsteht ausschließlich nach deiner lokalen, interaktiven Bestätigung.**
