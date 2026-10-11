@@ -1,45 +1,38 @@
-# Run once on your Windows PC, in PowerShell, with your own user account.
+# One-time setup on YOUR Windows PC. Hermes is already your primary coding agent.
 $ErrorActionPreference = "Stop"
 if ([Environment]::OSVersion.Platform -ne [PlatformID]::Win32NT) {
-    throw "Windows is required for DPAPI and Task Scheduler setup."
+    throw "This setup supports Windows Task Scheduler. No cloud runner is required."
 }
 $root = (Resolve-Path (Join-Path $PSScriptRoot "..")).Path
-$state = Join-Path $root ".local"
-New-Item -ItemType Directory -Force -Path $state | Out-Null
-foreach ($program in @("git", "gh", "cargo", "npm", "python")) {
+foreach ($program in @("git", "gh", "cargo", "python", "hermes", "rustup")) {
     if (-not (Get-Command $program -ErrorAction SilentlyContinue)) {
-        throw "Missing $program. Install it before starting setup."
+        throw "Missing $program. Install/configure it first on this PC."
     }
 }
-if (-not (Get-Command "opencode" -ErrorAction SilentlyContinue)) {
-    Write-Host "Installing OpenCode locally with npm..."
-    & npm install -g opencode-ai
-    if ($LASTEXITCODE -ne 0) { throw "Could not install OpenCode." }
-}
 & gh auth status
-if ($LASTEXITCODE -ne 0) { throw "Run gh auth login first and repeat setup." }
+if ($LASTEXITCODE -ne 0) {
+    throw "GitHub CLI not authenticated. Run gh auth login, then retry."
+}
 & gh auth setup-git
-if ($LASTEXITCODE -ne 0) { throw "Could not configure Git credential helper." }
-$secret = Read-Host "MiMo API key (encrypted for this Windows user, not uploaded to GitHub)" -AsSecureString
-if (-not $secret -or $secret.Length -lt 10) { throw "Missing API key." }
-$secrets = Join-Path $state "secrets"
-New-Item -ItemType Directory -Force -Path $secrets | Out-Null
-$secret | ConvertFrom-SecureString | Set-Content -Path (Join-Path $secrets "mimo.dpapi") -NoNewline
-Write-Host "Pay-as-you-go sk- keys: press Enter. Token Plan tp-/ttp- keys: enter the Token Plan base URL."
-$defaultUrl = "https://api.xiaomimimo.com/v1"
-$url = Read-Host "Official MiMo base URL [$defaultUrl]"
-if ([string]::IsNullOrWhiteSpace($url)) { $url = $defaultUrl }
-$uri = $null
-if (-not [Uri]::TryCreate($url, [UriKind]::Absolute, [ref]$uri)) {
-    throw "Invalid base URL"
+if ($LASTEXITCODE -ne 0) {
+    throw "Git credential helper setup failed."
 }
-if ($uri.Scheme -ne "https" -or -not ($uri.Host -eq "xiaomimimo.com" -or $uri.Host.EndsWith(".xiaomimimo.com"))) {
-    throw "Only HTTPS Xiaomi MiMo API URLs are allowed"
+& rustup component add rustfmt clippy
+if ($LASTEXITCODE -ne 0) { throw "Rust component installation failed." }
+& rustup target add wasm32-unknown-unknown
+if ($LASTEXITCODE -ne 0) { throw "WASM target installation failed." }
+& hermes --version
+if ($LASTEXITCODE -ne 0) {
+    throw "Hermes CLI is not usable. Fix Hermes before running automation."
 }
-@{base_url=$url; model="mimo-v2.6-flash"} | ConvertTo-Json | Set-Content -Path (Join-Path $state "settings.json") -Encoding UTF8
-Write-Host "Running local automation tests..."
+Write-Host "Hermes uses your existing model/provider configuration."
+Write-Host "To select Xiaomi MiMo, run 'hermes model' (provider: xiaomi)."
+Write-Host "Its API key stays in Hermes's existing credentials, not in this repo."
 & python -m unittest discover -s (Join-Path $root "tests") -v
-if ($LASTEXITCODE -ne 0) { throw "Local tests failed. Schedule not activated." }
-& (Join-Path $PSScriptRoot "enable-schedule.ps1")
-Write-Host "Configured local MiMo automation. Run scripts/run-local.ps1 for an immediate first pass."
-Write-Host "All code/test execution is on this PC. PR publication requires explicit manual approval."
+if ($LASTEXITCODE -ne 0) {
+    throw "Repository tests failed. Local schedule not enabled."
+}
+Write-Host "Setup checks passed. No scheduled job has been created yet."
+Write-Host "Manually run: .\scripts\run-local.ps1"
+Write-Host "To enable a recurring local schedule: .\scripts\enable-schedule.ps1"
+Write-Host "No upstream PR is ever created automatically."
