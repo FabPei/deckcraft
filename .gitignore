@@ -1,0 +1,4 @@
+# Never commit encrypted local secrets, source clones, worktrees or logs.
+.local/
+__pycache__/
+*.pyc
