@@ -33,7 +33,7 @@ class ApprovalGateTests(unittest.TestCase):
 
     def test_quality_gates_and_review(self):
         self.assertIn('"cargo", "xtask", "ci"', AGENT)
-        self.assertIn("from validate_review import check_review", AGENT)
+        self.assertIn("from validate_review import check_run, check_review", AGENT)
         self.assertIn("if not cargo_ci(", AGENT)
         self.assertIn("scout(issue, require=True)", AGENT)
         self.assertIn("1800", AGENT)
