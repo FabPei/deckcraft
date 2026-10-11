@@ -28,4 +28,4 @@ This repository orchestrates contributions to `storytold/deckcraft`. It is NOT t
 - `scripts/select_issue.py`: public issue/PR discovery and deduplication.
 - `tests/`: deterministic unit tests for automation behavior.
 
-The controller deliberately keeps the source of DeckCraft upstream instead of drifting into a competing source fork.
+The controller deliberately keeps the source of DeckCraft upstream instead of drifting into a competing source fork. This controller is public: approval issues, branch links, and test summaries must contain no secrets, personal data, or confidential materials.
