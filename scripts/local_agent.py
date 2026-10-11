@@ -213,8 +213,8 @@ def run(preferred=0):
                     "No broad refactors, external tools or protected changes.",
                     model, logs / "repair.jsonl", 600)
             (workspace / ".agent-ci.log").unlink(missing_ok=True)
-        if not cargo_ci(workspace, logs / "ci-final.log"):
-            raise Stopped(f"Rust quality gate failed; inspect logs at {logs}")
+            if not cargo_ci(workspace, logs / "ci-after-repair.log"):
+                raise Stopped(f"Rust quality gate failed after repair; inspect logs at {logs}")
         cmd(["git", "add", "-N", "-A", "--", ".", ":(exclude).agent-issue.md"],
             cwd=workspace)
         diff = cmd(["git", "diff", "--binary", "HEAD", "--", ".",
