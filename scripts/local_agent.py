@@ -62,7 +62,7 @@ def clone_once(url, directory):
 def prepare():
     clone_once(f"https://github.com/{FORK}.git", SOURCE)
     origin = cmd(["git", "remote", "get-url", "origin"], cwd=SOURCE).strip()
-    if origin.rstrip(".git").lower() != f"https://github.com/{FORK}".lower():
+    if origin.removesuffix(".git").lower() != f"https://github.com/{FORK}".lower():
         raise Stopped("The source origin is not the configured contribution fork")
     upstream = subprocess.run(["git", "remote", "get-url", "upstream"], cwd=SOURCE,
                               capture_output=True, text=True)
@@ -132,6 +132,8 @@ def cargo_ci(worktree, log):
     env = os.environ.copy()
     env.pop("MIMO_API_KEY", None)
     env["CRAFT_FONTS_DIR"] = str(FONTS)
+    env["CARGO_TARGET_DIR"] = str(STATE / "cargo-target")
+    (STATE / "cargo-target").mkdir(parents=True, exist_ok=True)
     with log.open("w", encoding="utf-8") as output:
         try:
             proc = subprocess.run(["cargo", "xtask", "ci"], cwd=worktree, env=env,
