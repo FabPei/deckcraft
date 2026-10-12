@@ -58,6 +58,20 @@ def clone_once(url, directory):
     cmd(["git", "clone", "--quiet", url, str(directory)], timeout=1200)
 
 
+def clone_optional(url, directory):
+    """Best-effort clone of shared, non-build material.
+
+    Upstream keeps its shared standards repository out of reach for some accounts
+    (private, renamed or deleted), and nothing downstream reads this checkout:
+    `cargo xtask ci` only needs craft-fonts. A missing optional clone must never
+    block a run.
+    """
+    try:
+        clone_once(url, directory)
+    except (Stopped, subprocess.TimeoutExpired, OSError) as exc:
+        print(f"Note: optional clone skipped: {url} ({exc})")
+
+
 def prepare():
     clone_once(f"https://github.com/{FORK}.git", SOURCE)
     origin = cmd(["git", "remote", "get-url", "origin"], cwd=SOURCE).strip()
@@ -73,7 +87,8 @@ def prepare():
     cmd(["git", "fetch", "--quiet", "upstream", "main"], cwd=SOURCE)
     cmd(["git", "fetch", "--quiet", "origin", "main"], cwd=SOURCE)
     clone_once("https://github.com/storytold/craft-fonts.git", FONTS)
-    clone_once("https://github.com/storytold/craftrules.git", RULES)
+    # Shared standards repo: unreachable for some accounts and read by no build step.
+    clone_optional("https://github.com/storytold/craftrules.git", RULES)
 
 
 def scout(preferred=0, require=False):
