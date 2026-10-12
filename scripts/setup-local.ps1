@@ -33,6 +33,7 @@ if ($LASTEXITCODE -ne 0) {
     throw "Repository tests failed. Local schedule not enabled."
 }
 Write-Host "Setup checks passed. No scheduled job has been created yet."
-Write-Host "Manually run: .\scripts\run-local.ps1"
-Write-Host "To enable a recurring local schedule: .\scripts\enable-schedule.ps1"
+$runHint = Join-Path "scripts" "run-local.ps1"
+Write-Host "Manually run: $runHint"
+Write-Host "A recurring local schedule stays disabled until you turn it on separately."
 Write-Host "No upstream PR is ever created automatically."
