@@ -4,15 +4,23 @@ This repository orchestrates contributions to the public project storytold/deckc
 The source of the application remains in its upstream repository, while a genuine
 public contributor fork lives at FabPei/deckcraft-contrib.
 
-## Absolute human-approval gate
+## Bounded autonomous publishing
 
-- No unattended execution can create, publish, submit, merge, or approve a PR
-  against storytold/deckcraft.
-- Only an **interactive invocation** of scripts/approve-pr.ps1 may call gh pr create,
-  after verifying that the candidate branch is exactly the previously reviewed
-  commit SHA and the human types the exact PUBLISH #N confirmation.
-- Do not put the publish subcommand into Task Scheduler, cron, a push trigger,
-  a webhook, a Hermes coding agent, GitHub Actions or any background process.
+- The local controller may open PRs against storytold/deckcraft unattended when every
+  gate passes: a validated approval record (`cargo xtask ci` and the independent
+  review), the fork branch at exactly the reviewed commit SHA, the claim-rule
+  re-check, and the publishing budget (`publish_budget()`): at most 3 open agent PRs
+  and at most 2 new PRs per 24 hours.
+- `scripts/local_agent.py run --publish` publishes unattended; the interactive
+  `scripts/approve-pr.ps1` (typed `PUBLISH #N` confirmation) stays the manual path.
+- Hard lines: never merge, approve, or push to upstream; never publish outside the
+  budget; every published PR states how it was validated.
+- Kill switch: creating `.local/PAUSE` stops all publishing at once.
+- Publishing is never scheduled by default: the Windows Task Scheduler invokes ONLY
+  scripts/run-local.ps1 and ONLY the run subcommand of scripts/local_agent.py without
+  `--publish`, and no automatic publishing may be added to Task Scheduler, cron, a
+  push trigger, a webhook or GitHub Actions without explicit instruction from the
+  human.
 - Never reintroduce scheduled cloud coding or cloud PR workflows without
   explicit instruction from the human.
 
@@ -58,7 +66,7 @@ public contributor fork lives at FabPei/deckcraft-contrib.
 - scripts/setup-local.ps1: Windows prerequisites check; does not launch agents
 - scripts/run-local.ps1: local run using the user's existing Hermes installation
 - scripts/enable-schedule.ps1 / disable-schedule.ps1: local Windows scheduler
-- scripts/approve-pr.ps1: sole manual PR authorization
+- scripts/approve-pr.ps1: manual PR authorization with typed confirmation
 - scripts/select_issue.py: scout and PR deduplication
 - scripts/validate_review.py: Hermes stream-json terminal result validation
 - tests/: unit tests for approval gate, issue selection and reviewer

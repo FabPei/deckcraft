@@ -16,15 +16,27 @@ class ApprovalGateTests(unittest.TestCase):
         self.assertFalse((ROOT / ".github" / "workflows" / "publish-approved.yml").exists())
         self.assertFalse((ROOT / ".github" / "workflows" / "controller-ci.yml").exists())
 
-    def test_pr_creation_only_in_explicit_publish_command(self):
-        self.assertIn("def publish(issue):", AGENT)
-        self.assertIn("if not sys.stdin.isatty():", AGENT)
-        self.assertIn("input(f\"Type PUBLISH #{issue}", AGENT)
-        self.assertIn('"pr", "create"', AGENT)
-        self.assertIn('run(args.issue) if args.action == "run" else publish(args.issue)', AGENT)
+    def test_pr_creation_only_in_the_bounded_publish_command(self):
+        self.assertIn("def publish(issue, interactive=True):", AGENT)
+        self.assertIn('\"pr\", \"create\"', AGENT)
+        self.assertNotIn('\"pr\", \"create\"', RUN)
+        self.assertNotIn('\"pr\", \"create\"', SCHEDULE)
         self.assertIn("publish --issue $Issue", PUBLISH)
-        self.assertNotIn('"pr", "create"', RUN)
-        self.assertNotIn('"pr", "create"', SCHEDULE)
+        # The typed confirmation stays the manual path; unattended publishing is
+        # opt-in, budgeted and kill-switchable, and never merges or approves.
+        self.assertIn("Type PUBLISH #{issue}", AGENT)
+        self.assertIn("def publish_budget():", AGENT)
+        self.assertIn('run_parser.add_argument("--publish"', AGENT)
+        self.assertIn("publish(issue, interactive=False)", AGENT)
+        self.assertNotIn('"pr", "merge"', AGENT)
+        self.assertNotIn('"pr", "approve"', AGENT)
+
+    def test_unattended_publish_budget_bounds_the_tracker(self):
+        self.assertIn("MAX_OPEN_PRS = 3", AGENT)
+        self.assertIn("MAX_NEW_PRS_PER_DAY = 2", AGENT)
+        self.assertIn("state=all&sort=created&direction=desc", AGENT)
+        self.assertIn("PAUSE = STATE / \"PAUSE\"", AGENT)
+        self.assertIn("if PAUSE.exists():", AGENT)
 
     def test_exact_sha_is_checked_before_confirmation(self):
         self.assertIn("remote[0] != sha", AGENT)

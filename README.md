@@ -42,15 +42,18 @@ Zeitplan wieder abschalten:
 
 Scheduler läuft nur mit angemeldetem Windows-Benutzer. PC muss eingeschaltet sein. Ein Agentenlauf bearbeitet höchstens einen Kandidaten.
 
-## Deine ausschließliche PR-Freigabe
+## PR-Publizierung
 
-Ein erfolgreiches Ergebnis erzeugt den Fork-Branch \`agent/issue-N\` sowie ein GitHub-Issue mit dem Titel \`PR approval: upstream #N\` im Controller. Dort prüfst du den Code, die Tests und den Commit.
+Ein erfolgreiches Ergebnis erzeugt den Fork-Branch \`agent/issue-N\` sowie ein GitHub-Issue mit dem Titel \`PR approval: upstream #N\` im Controller. Dort liegen Review, Tests und der Commit zur Ansicht.
 
-Nur danach **manuell im lokalen Terminal**:
+Der PR entsteht auf einem von zwei Wegen:
 
-    .\scripts\approve-pr.ps1 -Issue 69
+- **Automatisch:** \`python scripts/local_agent.py run --publish\` öffnet den PR unmittelbar nach dem Lauf, solange das Budget es erlaubt (höchstens 3 offene Agent-PRs, höchstens 2 neue PRs pro 24 Stunden) und \`.local/PAUSE\` nicht existiert.
+- **Manuell im lokalen Terminal:**
 
-Der Publisher prüft, dass der Branch exakt dem getesteten Commit entspricht, und verlangt die wörtliche Eingabe \`PUBLISH #69\`. Der Coding-Agent, Reviewer und Task Scheduler können **keine externen PRs eröffnen**.
+      .\scripts\approve-pr.ps1 -Issue 69
+
+Der Publisher prüft in beiden Fällen, dass der Branch exakt dem getesteten Commit entspricht; manuell verlangt er zusätzlich die wörtliche Eingabe \`PUBLISH #69\`. Harte Grenzen: Der Controller mergt und approvt nie, pusht nie zu upstream, und der Task Scheduler startet weiterhin nur \`run\` ohne \`--publish\`. Kill-Switch: \`.local/PAUSE\` anlegen stoppt jedes Publizieren sofort.
 
 ## Technischer Ablauf
 

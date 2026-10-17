@@ -17,6 +17,19 @@ class IssueScoutTests(unittest.TestCase):
     def test_parenthesized_issue_in_title(self):
         self.assertIn(93, scout.refs_in_pr({"title": "Bullets fixed (#93)", "body": ""}))
 
+    def test_explicit_pick_ignores_the_scoring_heuristics(self):
+        issue = {
+            "number": 845,
+            "title": "Pdfs file are 50x too large",
+            "body": "The attached document produces a 200+Mo pdf while libreoffice produces a 4Mo pdf.",
+            "labels": [{"name": "priority: medium"}],
+        }
+        self.assertIsNone(scout.score(issue))
+        picked = scout.choose([issue], set(), explicit=845)
+        self.assertEqual([i["number"] for _, i in picked], [845])
+        self.assertEqual(scout.choose([issue], set()), [])
+        self.assertEqual(scout.choose([issue], {845}, explicit=845), [])
+
     def test_prefers_high_value_core_bug(self):
         issue = {
             "number": 69,

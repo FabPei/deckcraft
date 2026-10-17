@@ -91,6 +91,18 @@ def score(issue):
     return points
 
 
+def choose(issues, occupied, explicit=0):
+    """Scored candidates from the open issues that no PR, branch or controller issue claims.
+
+    An explicitly named issue only has to pass that claim rule; the scoring heuristics
+    (`score`) guide automatic selection and never veto a hand-picked candidate.
+    """
+    free = [i for i in issues if i["number"] not in occupied]
+    if explicit:
+        return [(0, i) for i in free if i["number"] == explicit]
+    return [(s, i) for s, i in ((score(i), i) for i in free) if s is not None]
+
+
 def write_output(number, issue=None, reason=""):
     output = os.environ.get("GITHUB_OUTPUT")
     if output:
@@ -139,10 +151,7 @@ def main():
             if match:
                 occupied.add(int(match.group(1)))
 
-    choices = [(score(i), i) for i in issues if i["number"] not in occupied]
-    choices = [(s, i) for s, i in choices if s is not None]
-    if args.issue:
-        choices = [(s, i) for s, i in choices if i["number"] == args.issue]
+    choices = choose(issues, occupied, args.issue)
     if not choices:
         write_output(None, reason="no eligible, unclaimed issue")
         if args.require:
